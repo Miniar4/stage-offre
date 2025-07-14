@@ -9,15 +9,18 @@ class User(db.Model):
     nom = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), nullable=False)  # 'stagiaire' ou 'admin'
+    role = db.Column(db.String(50), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    def set_password(self, password):
-        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 
-    def check_password(self, password):
-        return bcrypt.check_password_hash(self.password_hash, password)
+    def serialize(self):
+        return {
+            "id": self.id,
+            "nom": self.nom,
+            "email": self.email,
+            "role": self.role,
+            "created_at": self.created_at.isoformat()
+        }
 
-    # Relations et autres champs à ajouter (ex : statut, encadrant...)
 
 class Offer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -25,7 +28,7 @@ class Offer(db.Model):
     description = db.Column(db.Text, nullable=False)
     nb_souhaitee = db.Column(db.Integer, nullable=False, default=1)
     competences = db.Column(db.String(255), nullable=True)
-    duree = db.Column(db.String(100), nullable=True)  # ex: "3 months"
+    duree = db.Column(db.String(100), nullable=True)
     date_debut = db.Column(db.Date, nullable=True)
     date_fin = db.Column(db.Date, nullable=True)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
@@ -39,8 +42,10 @@ class Offer(db.Model):
             "competences": self.competences,
             "duree": self.duree,
             "date_debut": self.date_debut.isoformat() if self.date_debut else None,
-            "date_fin": self.date_fin.isoformat() if self.date_fin else None
+            "date_fin": self.date_fin.isoformat() if self.date_fin else None,
+            "date_creation": self.date_creation.isoformat()
         }
+
 
 
     # etc.
@@ -61,15 +66,53 @@ class Application(db.Model):
     date_entretien = db.Column(db.DateTime, nullable=True)
     lieu_entretien = db.Column(db.String(150), nullable=True)
 
+    def serialize(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "offer_id": self.offer_id,
+            "name": self.name,
+            "email": self.email,
+            "university": self.university,
+            "education": self.education,
+            "duration": self.duration,
+            "motivation": self.motivation,
+            "cv_filename": self.cv_filename,
+            "motivation_filename": self.motivation_filename,
+            "statut": self.statut,
+            "date_entretien": self.date_entretien.isoformat() if self.date_entretien else None,
+            "lieu_entretien": self.lieu_entretien
+        }
+
+
 
 class Contact(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     message = db.Column(db.Text, nullable=False)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "message": self.message
+        }
+
 class Rapport(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    fichier = db.Column(db.String(255))  # nom du fichier PDF
+    fichier = db.Column(db.String(255))
     commentaire = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "fichier": self.fichier,
+            "commentaire": self.commentaire,
+            "created_at": self.created_at.isoformat()
+        }
+

@@ -1,3 +1,5 @@
+# backend/routes/user.py
+
 import os
 from werkzeug.utils import secure_filename
 from flask import Blueprint, request, jsonify
@@ -7,12 +9,15 @@ user_bp = Blueprint('user_bp', __name__)
 
 UPLOAD_FOLDER_CV = 'uploads/cv'
 UPLOAD_FOLDER_MOTIVATION = 'uploads/motivation'
+
+# Créer les dossiers si non existants
 os.makedirs(UPLOAD_FOLDER_CV, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER_MOTIVATION, exist_ok=True)
 
 @user_bp.route('/<int:user_id>/apply-offer/<int:offer_id>', methods=['POST'])
 def postuler_offre(user_id, offer_id):
     data = request.form
+
     name = data.get('name')
     email = data.get('email')
     university = data.get('university')
@@ -23,18 +28,29 @@ def postuler_offre(user_id, offer_id):
     file_cv = request.files.get('cv')
     file_motivation = request.files.get('motivationLetter')
 
-    if not all([file_cv, file_motivation]):
-        return jsonify({'error': 'Files missing'}), 400
+    # Vérification des champs obligatoires
+    if not all([name, email, university, education, duration, motivation]):
+        return jsonify({'error': 'Tous les champs sont requis'}), 400
 
+    if not file_cv or not file_motivation:
+        return jsonify({'error': 'CV et lettre de motivation requis'}), 400
+
+    # Sécuriser les noms de fichiers
     cv_filename = secure_filename(file_cv.filename)
     motivation_filename = secure_filename(file_motivation.filename)
 
+    # Chemins de sauvegarde
     cv_path = os.path.join(UPLOAD_FOLDER_CV, cv_filename)
     motivation_path = os.path.join(UPLOAD_FOLDER_MOTIVATION, motivation_filename)
 
-    file_cv.save(cv_path)
-    file_motivation.save(motivation_path)
+    # Sauvegarde des fichiers
+    try:
+        file_cv.save(cv_path)
+        file_motivation.save(motivation_path)
+    except Exception as e:
+        return jsonify({'error': f'Échec de la sauvegarde des fichiers : {str(e)}'}), 500
 
+    # Enregistrement en base de données
     application = Application(
         user_id=user_id,
         offer_id=offer_id,
@@ -49,7 +65,10 @@ def postuler_offre(user_id, offer_id):
         statut='en attente'
     )
 
-    db.session.add(application)
-    db.session.commit()
+    try:
+        db.session.add(application)
+        db.session.commit()
+    except Exception as e:
+        return jsonify({'error': f'Erreur base de données : {str(e)}'}), 500
 
-    return jsonify({'message': 'Application submitted successfully'}), 201
+    return jsonify({'message': 'Candidature soumise avec succès'}), 201
