@@ -1,69 +1,88 @@
-# cSpell:disable
-from flask import Blueprint, jsonify, request
-from models import User, Application, Rapport,db
+from flask import Blueprint, jsonify, request, send_from_directory
+from models import User, Application, Rapport, db
 from datetime import datetime
-from flask import send_from_directory
 
 admin_bp = Blueprint('admin', __name__)
 
-# Liste des comptes créés
-@admin_bp.route('/comptes', methods=['GET'])
+@admin_bp.route('/admin/comptes', methods=['GET'])
 def get_comptes():
-    users = User.query.all()
-    return jsonify([u.serialize() for u in users]), 200
+    try:
+        users = User.query.all()
+        return jsonify([u.serialize() for u in users]), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch users"}), 500
 
-# Voir toutes les candidatures
-@admin_bp.route('/candidatures', methods=['GET'])
+@admin_bp.route('/admin/candidatures', methods=['GET'])
 def get_all_candidatures():
-    applications = Application.query.all()
-    result = []
-    for app in applications:
-        result.append({
-            "id": app.id,
-            "user_id": app.user_id,
-            "offre_id": app.offer_id,
-            "statut": app.statut
-        })
-    return jsonify(result), 200
+    try:
+        applications = Application.query.all()
+        result = []
+        for app in applications:
+            result.append({
+                "id": app.id,
+                "user_id": app.user_id,
+                "offre_id": app.offer_id,
+                "statut": app.statut,
+                "date_candidature": app.date_candidature.isoformat() if app.date_candidature else None
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch applications"}), 500
 
-# Changer statut (accepter ou refuser)
-@admin_bp.route('/candidature/<int:id>/statut', methods=['PUT'])
+@admin_bp.route('/admin/candidature/<int:id>/statut', methods=['PUT'])
 def update_statut(id):
-    data = request.json
-    statut = data.get("statut")
-    entretien_date = data.get("date_entretien")
-    entretien_lieu = data.get("lieu_entretien")
+    try:
+        data = request.json
+        statut = data.get("statut")
+        
+        if not statut:
+            return jsonify({"error": "Status is required"}), 400
+            
+        app = Application.query.get(id)
+        if not app:
+            return jsonify({"error": "Application not found"}), 404
 
-    app = Application.query.get(id)
-    if not app:
-        return jsonify({"error": "Candidature non trouvée"}), 404
+        app.statut = statut
+        if statut == "accepté":
+            app.date_entretien = data.get("date_entretien")
+            app.lieu_entretien = data.get("lieu_entretien")
 
-    app.statut = statut
-    if statut == "accepté":
-        app.date_entretien = entretien_date
-        app.lieu_entretien = entretien_lieu
+        db.session.commit()
+        return jsonify({"message": "Status updated successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to update status"}), 500
 
-    db.session.commit()
-    return jsonify({"message": "Statut mis à jour"}), 200
-
-# Ajouter commentaire sur rapport
-@admin_bp.route('/rapport/<int:user_id>/commentaire', methods=['POST'])
+@admin_bp.route('/admin/rapport/<int:user_id>/commentaire', methods=['POST'])
 def ajouter_commentaire(user_id):
-    data = request.json
-    commentaire = data.get("commentaire")
+    try:
+        data = request.json
+        commentaire = data.get("commentaire")
+        
+        if not commentaire:
+            return jsonify({"error": "Comment is required"}), 400
 
-    rapport = Rapport.query.filter_by(user_id=user_id).first()
-    if not rapport:
-        return jsonify({"error": "Rapport non trouvé"}), 404
+        rapport = Rapport.query.filter_by(user_id=user_id).first()
+        if not rapport:
+            return jsonify({"error": "Report not found"}), 404
 
-    rapport.commentaire = commentaire
-    db.session.commit()
-    return jsonify({"message": "Commentaire ajouté"}), 200
-@admin_bp.route('/download/cv/<filename>', methods=['GET'])
+        rapport.commentaire = commentaire
+        db.session.commit()
+        return jsonify({"message": "Comment added successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to add comment"}), 500
+
+@admin_bp.route('/admin/download/cv/<filename>', methods=['GET'])
 def download_cv(filename):
-    return send_from_directory('uploads/cv', filename, as_attachment=True)
+    try:
+        return send_from_directory('uploads/cv', filename, as_attachment=True)
+    except Exception as e:
+        return jsonify({"error": "File not found"}), 404
 
-@admin_bp.route('/download/motivation/<filename>', methods=['GET'])
+@admin_bp.route('/admin/download/motivation/<filename>', methods=['GET'])
 def download_motivation(filename):
-    return send_from_directory('uploads/motivation', filename, as_attachment=True)
-
+    try:
+        return send_from_directory('uploads/motivation', filename, as_attachment=True)
+    except Exception as e:
+        return jsonify({"error": "File not found"}), 404

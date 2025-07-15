@@ -1,6 +1,8 @@
 # cSpell:disable
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+
 
 db = SQLAlchemy()
 
@@ -20,7 +22,11 @@ class User(db.Model):
             "role": self.role,
             "created_at": self.created_at.isoformat()
         }
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
 
+    def check_password(self, password):
+        return check_password_hash(self.password, password)
 
 class Offer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
