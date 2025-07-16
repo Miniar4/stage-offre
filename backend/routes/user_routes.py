@@ -2,6 +2,7 @@
 
 import os
 from werkzeug.utils import secure_filename
+from flask import send_from_directory
 from flask import Blueprint, request, jsonify
 from models import db, Application
 
@@ -72,3 +73,12 @@ def postuler_offre(user_id, offer_id):
         return jsonify({'error': f'Erreur base de données : {str(e)}'}), 500
 
     return jsonify({'message': 'Candidature soumise avec succès'}), 201
+
+
+@user_bp.route('/users/<int:user_id>/attestation', methods=['GET'])
+def get_attestation(user_id):
+    user = User.query.get(user_id)
+    if not user or not user.attestation_filename:
+        return jsonify({'error': 'Aucune attestation'}), 404
+
+    return send_from_directory('uploads/attestations', user.attestation_filename, as_attachment=True)

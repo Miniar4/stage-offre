@@ -1,8 +1,12 @@
+import os
 from flask import Blueprint, jsonify, request, send_from_directory
+from werkzeug.utils import secure_filename
 from models import User, Application, Rapport, db
 from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__)
+UPLOAD_ATTEST = 'uploads/attestations'
+os.makedirs(UPLOAD_ATTEST, exist_ok=True)
 
 @admin_bp.route('/admin/comptes', methods=['GET'])
 def get_comptes():
@@ -17,17 +21,30 @@ def get_all_candidatures():
     try:
         applications = Application.query.all()
         result = []
+
         for app in applications:
             result.append({
                 "id": app.id,
                 "user_id": app.user_id,
-                "offre_id": app.offer_id,
+                "offer_id": app.offer_id,
+                "name": app.name,
+                "email": app.email,
+                "university": app.university,
+                "education": app.education,
+                "duration": app.duration,
+                "motivation": app.motivation,
+                "cv_filename": app.cv_filename,
+                "motivation_filename": app.motivation_filename,
                 "statut": app.statut,
+                "date_entretien": app.date_entretien.isoformat() if app.date_entretien else None,
+                "lieu_entretien": app.lieu_entretien,
                 "date_candidature": app.date_candidature.isoformat() if app.date_candidature else None
             })
+
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"error": "Failed to fetch applications"}), 500
+
 
 @admin_bp.route('/admin/candidature/<int:id>/statut', methods=['PUT'])
 def update_statut(id):
@@ -86,3 +103,26 @@ def download_motivation(filename):
         return send_from_directory('uploads/motivation', filename, as_attachment=True)
     except Exception as e:
         return jsonify({"error": "File not found"}), 404
+
+@admin_bp.route('/users/<int:user_id>/attestation', methods=['POST'])
+def upload_attestation(user_id):
+    try:
+        file = request.files.get('attestation')
+        if not file:
+            return jsonify({'error': 'Aucun fichier reçu'}), 400
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'Utilisateur non trouvé'}), 404
+
+        filename = secure_filename(file.filename)
+        path = os.path.join(UPLOAD_ATTEST, filename)
+        file.save(path)
+
+        user.attestation_filename = filename
+        db.session.commit()
+
+        return jsonify({'message': 'Attestation enregistrée'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Erreur lors de l\'enregistrement de l\'attestation'}), 500

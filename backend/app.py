@@ -23,6 +23,7 @@ app.secret_key = "votre_secret_key_ici"  # sécuriser en production
 # Activer CORS pour toutes les routes, origine localhost:4200 (front Angular)
 CORS(app, resources={r"/*": {"origins": "http://localhost:4200"}}, supports_credentials=True)
 
+
 # Initialisation extensions
 db.init_app(app)
 bcrypt = Bcrypt(app)

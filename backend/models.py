@@ -13,6 +13,7 @@ class User(db.Model):
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
 
     def serialize(self):
         return {
@@ -20,7 +21,8 @@ class User(db.Model):
             "nom": self.nom,
             "email": self.email,
             "role": self.role,
-            "created_at": self.created_at.isoformat()
+            "created_at": self.created_at.isoformat(),
+            
         }
     def set_password(self, password):
         self.password = generate_password_hash(password)
@@ -71,6 +73,8 @@ class Application(db.Model):
     statut = db.Column(db.String(50), default="en attente")
     date_entretien = db.Column(db.DateTime, nullable=True)
     lieu_entretien = db.Column(db.String(150), nullable=True)
+    date_candidature = db.Column(db.DateTime, default=datetime.utcnow)
+
 
     def serialize(self):
         return {
@@ -87,7 +91,9 @@ class Application(db.Model):
             "motivation_filename": self.motivation_filename,
             "statut": self.statut,
             "date_entretien": self.date_entretien.isoformat() if self.date_entretien else None,
-            "lieu_entretien": self.lieu_entretien
+            "lieu_entretien": self.lieu_entretien,
+            "date_candidature": self.date_candidature.isoformat() if self.date_candidature else None
+
         }
 
 
@@ -121,4 +127,3 @@ class Rapport(db.Model):
             "commentaire": self.commentaire,
             "created_at": self.created_at.isoformat()
         }
-

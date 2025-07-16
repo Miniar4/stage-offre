@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token
 from models import db, User
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_cors import cross_origin
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -29,6 +30,7 @@ def register():
     return jsonify({"message": "Inscription réussie"}), 201
 
 @auth_bp.route('/login', methods=['POST'])
+@cross_origin(origin='http://localhost:4200', supports_credentials=True)
 def login():
     data = request.json
     email = data.get('email')
