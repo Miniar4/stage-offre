@@ -127,3 +127,16 @@ class Rapport(db.Model):
             "commentaire": self.commentaire,
             "created_at": self.created_at.isoformat()
         }
+class Stagiaire(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    application_id = db.Column(db.Integer, db.ForeignKey('application.id'), nullable=False)
+    encadrant = db.Column(db.String(150), nullable=False)
+    sujet = db.Column(db.String(255), nullable=False)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "application_id": self.application_id,
+            "encadrant": self.encadrant,
+            "sujet": self.sujet
+        }

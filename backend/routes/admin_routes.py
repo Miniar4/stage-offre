@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from flask import Blueprint, jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
-from models import User, Application, Rapport, db
+from models import User, Application, Rapport, db,Stagiaire
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -85,27 +85,6 @@ def update_statut(id):
         logging.exception("Failed to update status")
         return jsonify({"error": str(e)}), 500
 
-# --- Ajouter un commentaire au rapport d'un utilisateur ---
-@admin_bp.route('/admin/rapport/<int:user_id>/commentaire', methods=['POST'])
-def ajouter_commentaire(user_id):
-    try:
-        data = request.json
-        commentaire = data.get("commentaire")
-        if not commentaire:
-            return jsonify({"error": "Comment is required"}), 400
-
-        rapport = Rapport.query.filter_by(user_id=user_id).first()
-        if not rapport:
-            return jsonify({"error": "Report not found"}), 404
-
-        rapport.commentaire = commentaire
-        db.session.commit()
-        return jsonify({"message": "Comment added successfully"}), 200
-    except Exception as e:
-        db.session.rollback()
-        logging.exception("Failed to add comment")
-        return jsonify({"error": str(e)}), 500
-
 # --- Téléchargement de CV ---
 @admin_bp.route('/admin/download/cv/<filename>', methods=['GET'])
 def download_cv(filename):
@@ -168,3 +147,55 @@ def get_all_contacts():
     except Exception as e:
         logging.exception("Failed to fetch contacts")
         return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route('/admin/stagiaire', methods=['POST'])
+def create_stagiaire():
+    try:
+        data = request.json
+        application_id = data.get('application_id')
+        encadrant = data.get('encadrant')
+        sujet = data.get('sujet')
+
+        if not application_id or not encadrant or not sujet:
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # Ici, il faut ajouter ton modèle Stagiaire si tu l'as, sinon créer en base
+        from models import Stagiaire
+
+        new_stagiaire = Stagiaire(
+            application_id=application_id,
+            encadrant=encadrant,
+            sujet=sujet
+        )
+        db.session.add(new_stagiaire)
+
+        # Mettre à jour le statut de la candidature
+        application = Application.query.get(application_id)
+        if application:
+            application.statut = 'accepté'
+
+        db.session.commit()
+        return jsonify({"message": "Stagiaire créé avec succès"}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Erreur lors de la création du stagiaire"}), 500
+@admin_bp.route('/admin/stagiaires', methods=['GET'])
+def get_stagiaires():
+    stagiaires = Stagiaire.query.all()
+    return jsonify([s.serialize() for s in stagiaires])
+@admin_bp.route('/admin/rapport/<int:user_id>/commentaire', methods=['POST'])
+def commenter_rapport(user_id):
+    data = request.json
+    commentaire = data.get('commentaire')
+    if not commentaire:
+        return jsonify({"error": "Commentaire manquant"}), 400
+
+    rapport = Rapport(user_id=user_id, commentaire=commentaire)
+    db.session.add(rapport)
+    db.session.commit()
+
+    return jsonify({"message": "Commentaire ajouté"}), 201
+
+
