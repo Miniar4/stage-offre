@@ -9,6 +9,7 @@ from routes.offer_routes import offer_bp
 from routes.admin_routes import admin_bp
 from routes.rapport_routes import rapport_bp
 from routes.user_routes import user_bp
+from routes.attestation import attestation_bp
 import logging
 
 app = Flask(__name__)
@@ -16,11 +17,10 @@ app = Flask(__name__)
 # Configuration de base
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_SECRET_KEY'] = 'cle_jwt_super_secrete'  # Mets une vraie clé secrète
+app.config['JWT_SECRET_KEY'] = 'cle_jwt_super_secrete'  
 jwt = JWTManager(app)
-app.secret_key = "votre_secret_key_ici"  # sécuriser en production
+app.secret_key = "votre_secret_key_ici"  
 
-# Activer CORS pour toutes les routes, origine localhost:4200 (front Angular)
 CORS(app, resources={r"/*": {"origins": "http://localhost:4200"}}, supports_credentials=True)
 
 
@@ -43,6 +43,7 @@ app.register_blueprint(offer_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(rapport_bp)
 app.register_blueprint(user_bp)
+app.register_blueprint(attestation_bp)
 
 # Point d’entrée principal
 if __name__ == '__main__':

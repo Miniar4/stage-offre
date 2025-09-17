@@ -12,6 +12,13 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False)
+    age = db.Column(db.Integer, nullable=True)
+    date_of_birth = db.Column(db.Date, nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    address = db.Column(db.Text, nullable=True)
+    university = db.Column(db.String(150), nullable=True)
+    education = db.Column(db.String(100), nullable=True)
+    skills = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
 
@@ -21,6 +28,13 @@ class User(db.Model):
             "nom": self.nom,
             "email": self.email,
             "role": self.role,
+            "age": self.age,
+            "date_of_birth": self.date_of_birth.isoformat() if self.date_of_birth else None,
+            "phone": self.phone,
+            "address": self.address,
+            "university": self.university,
+            "education": self.education,
+            "skills": self.skills,
             "created_at": self.created_at.isoformat(),
             
         }
@@ -132,11 +146,14 @@ class Stagiaire(db.Model):
     application_id = db.Column(db.Integer, db.ForeignKey('application.id'), nullable=False)
     encadrant = db.Column(db.String(150), nullable=False)
     sujet = db.Column(db.String(255), nullable=False)
+    attestation_filename = db.Column(db.String(255), nullable=True)
+
 
     def serialize(self):
         return {
             "id": self.id,
             "application_id": self.application_id,
             "encadrant": self.encadrant,
-            "sujet": self.sujet
+            "sujet": self.sujet,
+            "attestation_filename":self.attestation_filename
         }

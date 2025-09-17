@@ -4,6 +4,8 @@ from flask_jwt_extended import create_access_token
 from models import db, User
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import cross_origin
+from datetime import datetime
+
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -13,7 +15,14 @@ def register():
     email = data.get('email')
     nom = data.get('nom')
     password = data.get('password')
-    role = data.get('role', 'stagiaire')  # par défaut stagiaire
+    role = data.get('role', 'stagiaire')  
+    age = data.get('age')
+    date_of_birth = data.get('dateOfBirth')
+    phone = data.get('phone')
+    address = data.get('address')
+    university = data.get('university')
+    education = data.get('education')
+    skills = data.get('skills')
 
     if not email or not password or not nom:
         return jsonify({"error": "Données manquantes"}), 400
@@ -21,7 +30,21 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Email déjà utilisé"}), 400
 
-    user = User(nom=nom, email=email, role=role)
+    user = User(
+            nom=nom, 
+            email=email,
+            role=role, 
+            age=age,
+            phone=phone,
+            address=address,
+            university=university,
+            education=education,
+            skills=skills)
+    if date_of_birth:
+        try:
+            user.date_of_birth = datetime.strptime(date_of_birth, '%Y-%m-%d').date()
+        except ValueError:
+            pass
     user.set_password(password)
 
     db.session.add(user)

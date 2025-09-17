@@ -1,10 +1,7 @@
-# backend/routes/user.py
-
 import os
 from werkzeug.utils import secure_filename
-from flask import send_from_directory
-from flask import Blueprint, request, jsonify
-from models import db, Application
+from flask import send_from_directory, Blueprint, request, jsonify, send_file, abort
+from models import db, Application, User, Stagiaire
 
 user_bp = Blueprint('user_bp', __name__)
 
@@ -74,11 +71,90 @@ def postuler_offre(user_id, offer_id):
 
     return jsonify({'message': 'Candidature soumise avec succès'}), 201
 
+@user_bp.route('/user/<int:user_id>/candidatures', methods=['GET'])
+def get_user_candidatures(user_id):
+    try:
+        # Récupérer les candidatures de l'utilisateur avec les informations du stagiaire si accepté
+        candidatures = db.session.query(Application).filter_by(user_id=user_id).all()
+        
+        result = []
+        for app in candidatures:
+            candidature_data = app.serialize()
+            
+            # Si la candidature est acceptée, récupérer les infos du stagiaire
+            if app.statut == 'accepté':
+                stagiaire = db.session.query(Stagiaire).filter_by(application_id=app.id).first()
+                if stagiaire:
+                    candidature_data.update({
+                        'sujet': stagiaire.sujet,
+                        'encadrant': stagiaire.encadrant,
+                        'attestation_filename': stagiaire.attestation_filename
+                    })
+            
+            result.append(candidature_data)
+        
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-@user_bp.route('/users/<int:user_id>/attestation', methods=['GET'])
-def get_attestation(user_id):
-    user = User.query.get(user_id)
-    if not user or not user.attestation_filename:
-        return jsonify({'error': 'Aucune attestation'}), 404
+@user_bp.route('/user/<int:user_id>', methods=['GET'])
+def get_user_profile(user_id):
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'Utilisateur non trouvé'}), 404
+        return jsonify(user.serialize()), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-    return send_from_directory('uploads/attestations', user.attestation_filename, as_attachment=True)
+@user_bp.route('/user/<int:stagiaire_id>/attestation')
+def get_attestation(stagiaire_id):
+    # Récupère le stagiaire et son fichier d'attestation
+    stagiaire = db.session.query(Stagiaire).filter_by(id=stagiaire_id).first()
+    if not stagiaire or not stagiaire.attestation_filename:
+        return abort(404, description="Attestation not found")
+
+    file_path = os.path.join('uploads', 'attestations', stagiaire.attestation_filename)
+    if not os.path.exists(file_path):
+        return abort(404, description="Attestation file not found on server")
+
+    return send_file(file_path, mimetype='application/pdf', as_attachment=True,
+                     download_name='attestation.pdf')
+
+@user_bp.route('/user/attestation/<int:stagiaire_id>', methods=['GET'])
+def download_attestation(stagiaire_id):
+    # Alternative endpoint pour le téléchargement
+    stagiaire = db.session.query(Stagiaire).filter_by(id=stagiaire_id).first()
+    if not stagiaire or not stagiaire.attestation_filename:
+        return abort(404)
+
+    file_path = os.path.join('uploads', 'attestations', stagiaire.attestation_filename)
+    if not os.path.exists(file_path):
+        return abort(404)
+
+    return send_file(file_path, mimetype='application/pdf', as_attachment=True,
+                     download_name='attestation.pdf')
+
+@user_bp.route('/user/<int:user_id>/stagiaires', methods=['GET'])
+def get_user_stagiaires(user_id):
+    # Récupérer tous les stagiaires liés aux candidatures de cet utilisateur
+    stagiaires = db.session.query(Stagiaire).join(Application).filter(Application.user_id == user_id).all()
+    stagiaires_list = [
+        {
+            'id': s.id,
+            'application_id': s.application_id,
+            'encadrant': s.encadrant,
+            'sujet': s.sujet,
+            'attestation_filename': s.attestation_filename
+        }
+        for s in stagiaires
+    ]
+    return jsonify({'stagiaires': stagiaires_list})
+
+@user_bp.route('/user/stagiaire/<int:stagiaire_id>', methods=['GET'])
+def get_stagiaire_by_id(stagiaire_id):
+    stagiaire = db.session.query(Stagiaire).filter_by(id=stagiaire_id).first()
+    if not stagiaire:
+        return jsonify({'error': 'Stagiaire not found'}), 404
+    
+    return jsonify(stagiaire.serialize()), 200
