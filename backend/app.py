@@ -7,7 +7,7 @@ from routes.auth_routes import auth_bp
 from routes.contact import contact_bp
 from routes.offer_routes import offer_bp
 from routes.admin_routes import admin_bp
-from routes.rapport_routes import rapport_bp
+from routes.rapport import rapport_bp
 from routes.user_routes import user_bp
 from routes.attestation import attestation_bp
 import logging
